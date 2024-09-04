@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract SimpleVoting {
+    address public owner;
+    bool public votingActive;
+    mapping(address => bool) public hasVoted;
+    mapping(string => uint) public votesReceived;
+    string[] public candidates;
+
+    // Event to log when a vote is cast
+    event VoteCast(address voter, string candidate);
+
+    // Event to log when voting ends
+    event VotingEnded(address endedBy);
+
+    constructor(string[] memory candidateNames) {
+        owner = msg.sender;
+        candidates = candidateNames;
+        votingActive = true;
+    }
+
+    // Function to vote for a candidate
+    function vote(string memory candidate) public {
+        // Ensure that voting is active
+        require(votingActive, "Voting is not active");
+        // Ensure that the voter hasn't already voted
+        require(!hasVoted[msg.sender], "You have already voted");
+
+        // Check that the candidate exists
+        bool validCandidate = false;
+        for (uint i = 0; i < candidates.length; i++) {
+            if (keccak256(bytes(candidates[i])) == keccak256(bytes(candidate))) {
+                validCandidate = true;
+                break;
+            }
+        }
+        require(validCandidate, "Invalid candidate");
+
+        // Record the vote
+        votesReceived[candidate] += 1;
+        hasVoted[msg.sender] = true;
+
+        // Ensure the vote was recorded correctly
+        assert(hasVoted[msg.sender] == true);
+
+        // Emit an event to indicate that a vote has been cast
+        emit VoteCast(msg.sender, candidate);
+    }
+
+    // Function to end the voting session
+    function endVoting() public {
+        // Only the owner can end the voting session
+        require(msg.sender == owner, "Only the owner can end the voting session");
+
+        // If voting is already ended, revert the transaction
+        if (!votingActive) {
+            revert("Voting is already ended");
+        }
+
+        votingActive = false;
+
+        // Emit an event to indicate that voting has ended
+        emit VotingEnded(msg.sender);
+    }
+
+    // Function to check the total votes for a candidate
+    function totalVotesFor(string memory candidate) public view returns (uint) {
+        return votesReceived[candidate];
+    }
+
+    // Function to get the list of candidates
+    function getCandidates() public view returns (string[] memory) {
+        return candidates;
+    }
+}
